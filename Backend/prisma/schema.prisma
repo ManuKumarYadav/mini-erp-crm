@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model challan_items {
+  id           Int      @id @default(autoincrement())
+  challan_id   Int
+  product_id   Int
+  product_name String   @db.VarChar(150)
+  sku          String   @db.VarChar(100)
+  unit_price   Decimal  @db.Decimal(10, 2)
+  quantity     Int
+  challans     challans @relation(fields: [challan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "challan_items_ibfk_1")
+  products     products @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "challan_items_ibfk_2")
+
+  @@index([challan_id], map: "challan_id")
+  @@index([product_id], map: "product_id")
+}
+
+model challans {
+  id             Int              @id @default(autoincrement())
+  challan_number String           @unique(map: "challan_number") @db.VarChar(50)
+  customer_id    Int
+  total_quantity Int              @default(0)
+  status         challans_status? @default(DRAFT)
+  created_by     Int?
+  created_at     DateTime?        @default(now()) @db.Timestamp(0)
+  challan_items  challan_items[]
+  customers      customers        @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "challans_ibfk_1")
+  users          users?           @relation(fields: [created_by], references: [id], onUpdate: NoAction, map: "challans_ibfk_2")
+
+  @@index([created_by], map: "created_by")
+  @@index([customer_id], map: "customer_id")
+}
+
+model customer_followups {
+  id             Int       @id @default(autoincrement())
+  customer_id    Int
+  note           String    @db.Text
+  follow_up_date DateTime? @db.Date
+  created_by     Int?
+  created_at     DateTime? @default(now()) @db.Timestamp(0)
+  customers      customers @relation(fields: [customer_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "customer_followups_ibfk_1")
+  users          users?    @relation(fields: [created_by], references: [id], onUpdate: NoAction, map: "customer_followups_ibfk_2")
+
+  @@index([created_by], map: "created_by")
+  @@index([customer_id], map: "customer_id")
+}
+
+model customers {
+  id                 Int                     @id @default(autoincrement())
+  name               String                  @db.VarChar(100)
+  mobile             String                  @db.VarChar(20)
+  email              String?                 @db.VarChar(150)
+  business_name      String?                 @db.VarChar(150)
+  gst_number         String?                 @db.VarChar(50)
+  customer_type      customers_customer_type
+  address            String?                 @db.Text
+  status             customers_status?       @default(LEAD)
+  follow_up_date     DateTime?               @db.Date
+  notes              String?                 @db.Text
+  created_at         DateTime?               @default(now()) @db.Timestamp(0)
+  updated_at         DateTime?               @default(now()) @db.Timestamp(0)
+  challans           challans[]
+  customer_followups customer_followups[]
+  orders             orders[]
+}
+
+model products {
+  id                 Int               @id @default(autoincrement())
+  name               String            @db.VarChar(150)
+  sku                String            @unique(map: "sku") @db.VarChar(100)
+  category           String?           @db.VarChar(100)
+  unit_price         Decimal           @default(0.00) @db.Decimal(10, 2)
+  current_stock      Int               @default(0)
+  minimum_stock      Int               @default(0)
+  warehouse_location String?           @db.VarChar(150)
+  created_at         DateTime?         @default(now()) @db.Timestamp(0)
+  updated_at         DateTime?         @default(now()) @db.Timestamp(0)
+  challan_items      challan_items[]
+  stock_movements    stock_movements[]
+  order_items        order_items[]
+}
+
+model sales {
+  id           Int      @id @default(autoincrement())
+  challan_id   Int?
+  customer_id  Int
+  product_id   Int
+  quantity     Int
+  unit_price   Decimal  @db.Decimal(10, 2)
+  total_amount Decimal  @db.Decimal(12, 2)
+  sale_date    DateTime? @default(now()) @db.Timestamp(0)
+  created_at   DateTime? @default(now()) @db.Timestamp(0)
+  updated_at   DateTime? @default(now()) @db.Timestamp(0)
+
+  @@unique([challan_id, product_id], map: "sales_challan_product_unique")
+}
+
+model orders {
+  id            Int           @id @default(autoincrement())
+  order_number  String        @unique @db.VarChar(50)
+  customer_id   Int
+  total_quantity Int          @default(0)
+  total_amount  Decimal       @default(0.00) @db.Decimal(12, 2)
+  status        orders_status @default(PENDING)
+  created_at    DateTime?     @default(now()) @db.Timestamp(0)
+
+  customers     customers     @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order_items   order_items[]
+
+  @@index([customer_id])
+}
+
+model order_items {
+  id          Int      @id @default(autoincrement())
+  order_id    Int
+  product_id  Int
+  product_name String  @db.VarChar(150)
+  sku         String   @db.VarChar(100)
+  unit_price  Decimal  @db.Decimal(10, 2)
+  quantity    Int
+
+  orders      orders   @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products    products @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id])
+  @@index([product_id])
+}
+
+enum orders_status {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+model stock_movements {
+  id            Int                           @id @default(autoincrement())
+  product_id    Int
+  quantity      Int
+  movement_type stock_movements_movement_type
+  reason        String?                       @db.VarChar(255)
+  created_by    Int?
+  created_at    DateTime?                     @default(now()) @db.Timestamp(0)
+  products      products                      @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "stock_movements_ibfk_1")
+  users         users?                        @relation(fields: [created_by], references: [id], onUpdate: NoAction, map: "stock_movements_ibfk_2")
+
+  @@index([created_by], map: "created_by")
+  @@index([product_id], map: "product_id")
+}
+
+model users {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(100)
+  email              String               @unique(map: "email") @db.VarChar(150)
+  password           String               @db.VarChar(255)
+  role               users_role
+  created_at         DateTime?            @default(now()) @db.Timestamp(0)
+  challans           challans[]
+  customer_followups customer_followups[]
+  stock_movements    stock_movements[]
+}
+
+enum stock_movements_movement_type {
+  IN
+  OUT
+}
+
+enum challans_status {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum users_role {
+  ADMIN
+  SALES
+  WAREHOUSE
+  ACCOUNTS
+}
+
+enum customers_customer_type {
+  RETAIL
+  WHOLESALE
+  DISTRIBUTOR
+}
+
+enum customers_status {
+  LEAD
+  ACTIVE
+  INACTIVE
+}
