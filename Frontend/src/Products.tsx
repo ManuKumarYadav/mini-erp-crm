@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_ENDPOINTS } from "./config/api";
 
 interface Product {
   id: number;
@@ -39,7 +40,7 @@ function Products() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API = "http://localhost:5000/api/products";
+  const API = API_ENDPOINTS.PRODUCTS;
 
   // ==========================================
   // GET PRODUCTS

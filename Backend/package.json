@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts",
+    "start": "prisma generate && tsx src/server.ts",
+    "seed": "tsx prisma/seed.ts",
+    "db:test": "tsx src/lib/test-db.ts",
+    "db:push": "prisma db push"
   },
   "keywords": [],
   "author": "",
@@ -12,14 +16,19 @@
   "dependencies": {
     "@prisma/adapter-mariadb": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mariadb": "^3.5.3"
+    "jsonwebtoken": "^9.0.3",
+    "mariadb": "^3.5.3",
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
     "prisma": "^7.9.1",
     "ts-node-dev": "^2.0.0",

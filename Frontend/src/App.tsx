@@ -1,16 +1,16 @@
 import Orders from "./components/Orders";
 import Reports from "./pages/Reports";
+import RoleBadge from "./components/RoleBadge";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
+import Login from "./pages/Login";
 
-// API
+import { API_ENDPOINTS } from "./config/api";
 
-const API_BASE = "http://localhost:5000/api";
-
-const CUSTOMER_API = `${API_BASE}/customers`;
-const PRODUCT_API = `${API_BASE}/products`;
-const SALES_API = `${API_BASE}/sales`;
+const CUSTOMER_API = API_ENDPOINTS.CUSTOMERS;
+const PRODUCT_API = API_ENDPOINTS.PRODUCTS;
+const SALES_API = API_ENDPOINTS.SALES;
 
 // TYPES
 
@@ -57,6 +57,22 @@ interface Sale {
   customers?: Customer;
   challan_items?: SaleItem[];
 }
+
+interface LoggedInUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+const getStoredUser = (): LoggedInUser | null => {
+  try {
+    const value = localStorage.getItem("user");
+    return value ? JSON.parse(value) as LoggedInUser : null;
+  } catch {
+    return null;
+  }
+};
 
 // CUSTOMER FORM
 
@@ -109,6 +125,8 @@ const emptyProductForm: ProductForm = {
 };
 
 function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [user, setUser] = useState<LoggedInUser | null>(getStoredUser);
   const [page, setPage] = useState<
     "dashboard" | "customers" | "products" | "sales" | "orders" | "reports">("dashboard");
 
@@ -150,6 +168,12 @@ function App() {
 
   const [creatingSale, setCreatingSale] =
     useState(false);
+
+  const role = user?.role ?? "";
+  const canManageCustomers = role === "ADMIN" || role === "SALES";
+  const canManageInventory = role === "ADMIN" || role === "WAREHOUSE";
+  const canUseSales = role === "ADMIN" || role === "SALES";
+  const canViewReports = role === "ADMIN";
 
   const getErrorMessage = (error: unknown): string => {
     if (axios.isAxiosError(error)) {
@@ -208,10 +232,30 @@ function App() {
   };
 
   useEffect(() => {
-    fetchCustomers();
+    if (!token) {
+      return;
+    }
+
+    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+    if (canManageCustomers) fetchCustomers();
     fetchProducts();
-    fetchSales();
-  }, []);
+    if (canUseSales) fetchSales();
+  }, [token, role]);
+
+  if (!token) {
+    return <Login onLogin={(newToken) => {
+      setToken(newToken);
+      setUser(getStoredUser());
+    }} />;
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    delete axios.defaults.headers.common.Authorization;
+    setUser(null);
+    setToken(null);
+  };
 
 
   const handleCustomerChange = (
@@ -732,30 +776,32 @@ function App() {
     ).length;
 
   return (
-    <div className="app">
+    <div className="app" data-role={role.toLowerCase()}>
 
-      <header className="header">
+      <header className="header" data-role={role.toLowerCase()}>
 
         <div className="logo">
-          <h1>Mini ERP CRM</h1>
-
-          <p>
-            Customer & Product Management System
-          </p>
+          <div className="logo-badge">{role === "ADMIN" ? "👑" : role === "SALES" ? "💼" : "📦"}</div>
+          <div>
+            <h1>Mini ERP CRM</h1>
+            <p>Customer &amp; Product Management System</p>
+          </div>
         </div>
 
-        <div className="header-count">
-          Customers
-          <strong>
-            {customers.length}
-          </strong>
+        <div className="header-actions">
+          <div className="header-count">
+            <span className="count-label">Customers</span>
+            <strong>{customers.length}</strong>
+          </div>
+
+          <RoleBadge user={user} onLogout={handleLogout} />
         </div>
 
       </header>
 
       <nav className="navbar">
 
-        <button
+        {canManageCustomers && <button
           className={
             page === "dashboard"
               ? "nav-active"
@@ -766,7 +812,7 @@ function App() {
           }
         >
           Dashboard
-        </button>
+        </button>}
 
         <button
           className={
@@ -781,7 +827,7 @@ function App() {
           Customers
         </button>
 
-        <button
+        {canUseSales && <button
           className={
             page === "products"
               ? "nav-active"
@@ -792,7 +838,7 @@ function App() {
           }
         >
           Products
-        </button>
+        </button>}
 
         <button
           className={
@@ -807,7 +853,7 @@ function App() {
           Sales
         </button>
 
-        <button
+        {canViewReports && <button
           className={
             page === "orders"
               ? "nav-active"
@@ -818,7 +864,7 @@ function App() {
           }
         >
           Orders
-        </button>
+        </button>}
 
         <button
           className={
@@ -851,6 +897,18 @@ function App() {
 
         {page === "dashboard" && (
           <>
+            <section className="dashboard-hero">
+              <div>
+                <p className="eyebrow">OVERVIEW</p>
+                <h2>Good to see you, {user?.name?.split(" ")[0] || "there"}.</h2>
+                <p>Here is the latest view of your customers, inventory and sales activity.</p>
+              </div>
+              <div className="dashboard-buttons">
+                {canManageCustomers && <button className="btn secondary" onClick={() => setPage("customers")}>Add customer</button>}
+                {canManageInventory && <button className="btn primary" onClick={() => setPage("products")}>Add product</button>}
+              </div>
+            </section>
+
             <div className="stats">
 
               <div className="stat-card">
@@ -895,7 +953,7 @@ function App() {
 
             </div>
 
-            <section className="card">
+            {canManageInventory && <section className="card">
 
               <div className="card-header">
                 <h2>
@@ -943,7 +1001,7 @@ function App() {
 
               </div>
 
-            </section>
+            </section>}
           </>
         )}
 
@@ -1360,7 +1418,7 @@ function App() {
 
                           <td>
 
-                            <div className="actions">
+                            {canManageInventory && <div className="actions">
 
                               <button
                                 className="btn edit"
@@ -1384,7 +1442,7 @@ function App() {
                                 Delete
                               </button>
 
-                            </div>
+                            </div>}
 
                           </td>
 
@@ -2248,11 +2306,16 @@ function App() {
         )}
 
         {page === "orders" && (
-          <Orders />
+          <Orders role={role} />
         )}
 
         {page === "reports" && (
-          <Reports />
+          <Reports
+            role={role}
+            userName={user?.name || user?.email || "Team Member"}
+            onNavigateHome={() => setPage("dashboard")}
+            onSwitchAccount={handleLogout}
+          />
         )}
 
       </main>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../config/api";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = API_BASE;
 
 interface Customer {
   id: number;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { API_BASE } from "../config/api";
 
-const API = "http://localhost:5000/api";
+const API = API_BASE;
 
 type Customer = {
   id: number;
@@ -50,7 +51,7 @@ const currency = (amount: number) =>
 const responseData = <T,>(payload: T[] | { data?: T[] }) =>
   Array.isArray(payload) ? payload : (payload.data ?? []);
 
-export default function Orders() {
+export default function Orders({ role: _role }: { role?: string } = {}) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
